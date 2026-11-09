@@ -1,95 +1,67 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+'use client';
+import { useEffect, useState } from 'react';
+
+type Simulation = {
+  id: number;
+  title: string;
+  category: string;
+  difficulty: string;
+  description: string;
+  reward_xp: number;
+  reward_coins: number;
+};
 
 export default function Home() {
-  return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol>
-          <li>
-            Get started by editing <code>src/app/page.tsx</code>.
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [sims, setSims] = useState<Simulation[]>([]);
+  const [answer, setAnswer] = useState<Record<number, string>>({});
+  const [msg, setMsg] = useState('');
+  const [userId] = useState(1); // demo: user id 1 = valent
 
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
-          >
-            Read our docs
-          </a>
+  useEffect(() => {
+    fetch('/api/simulations')
+      .then((r) => r.json())
+      .then((d) => setSims(d.data));
+  }, []);
+
+  async function submit(simId: number) {
+    setMsg('');
+    const res = await fetch('/api/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, simulationId: simId, answer: answer[simId] || '' }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setMsg(`✅ Berhasil! XP +${data.submission.xp_gained}, Koin +${data.submission.coins_gained}`);
+      setAnswer({ ...answer, [simId]: '' });
+    } else {
+      setMsg(`❌ ${data.error}`);
+    }
+  }
+
+  return (
+    <div>
+      <h1>Simulasi Kerja</h1>
+      <p>Pilih simulasi, kerjakan, dan kumpulkan untuk mendapat XP & koin.</p>
+      {msg && <p style={{ padding: '0.5rem', background: '#f0f9ff', borderRadius: 6 }}>{msg}</p>}
+      {sims.map((s) => (
+        <div key={s.id} className="card">
+          <h3>{s.title}</h3>
+          <p style={{ fontSize: '0.85rem', color: '#666' }}>
+            {s.category.toUpperCase()} • {s.difficulty} • +{s.reward_xp} XP • +{s.reward_coins} koin
+          </p>
+          <p>{s.description}</p>
+          <textarea
+            placeholder="Tulis jawabanmu..."
+            value={answer[s.id] || ''}
+            onChange={(e) => setAnswer({ ...answer, [s.id]: e.target.value })}
+          />
+          <br /><br />
+          <button onClick={() => submit(s.id)} disabled={!answer[s.id] || answer[s.id].length < 5}>
+            Kumpulkan
+          </button>
         </div>
-      </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      ))}
     </div>
   );
 }
